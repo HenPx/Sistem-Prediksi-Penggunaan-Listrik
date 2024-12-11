@@ -144,7 +144,7 @@ def main():
             """
             <ul>
                 <li><strong>Kolom 1:</strong> Tanggal dengan format <em>dd-mm-yyyy</em>, pastikan untuk mengikuti format ini agar data dapat diproses dengan benar.</li>
-                <li><strong>Kolom 2:</strong> Beban Puncak (BP) dengan format numerik/angka, harap masukkan angka tanpa simbol atau karakter lain.</li>
+                <li><strong>Kolom 2:</strong> Beban Puncak (BP) merupakan total penggunaan listrik per-harinya. Ditulis dengan format numerik/angka, harap masukkan angka tanpa simbol atau karakter lain.</li>
             </ul>
             """,
             unsafe_allow_html=True
