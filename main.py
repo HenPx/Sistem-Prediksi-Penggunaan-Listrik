@@ -37,7 +37,6 @@ def load_default_data():
 # Fungsi untuk menyimpan data ke file CSV
 def save_data(data, filename="Save_Data.csv"):
     data.to_csv(filename, index=False)
-    st.success(f"Data berhasil diupload. Silahkan refresh website dan pilih data yang digunakan pada sidebar.")
 # Judul utama aplikasi
 st.markdown(
     """
@@ -67,33 +66,32 @@ def main():
         selected = create_option_menu()
 
 
-    # Inisialisasi session state untuk data jika belum ada
-    if 'data' not in st.session_state:
-        st.session_state['data'] = load_default_data()
+        # Inisialisasi session state untuk data jika belum ada
+        if 'data' not in st.session_state:
+            st.session_state['data'] = load_default_data()
 
-    # Pilihan untuk menggunakan data default atau yang sudah disimpan
-    data_option = st.sidebar.selectbox(
-        "Pilih data yang ingin digunakan:",
-        ["Data Default", "Data Upload"]
-    )
+        # Pilihan untuk menggunakan data default atau yang sudah disimpan
+        data_option = st.sidebar.selectbox(
+            "Pilih data yang ingin digunakan:",
+            ["Data Default", "Data Upload"]
+        )
 
-    # Memuat dataset sesuai pilihan pengguna
-    if data_option == "Data Default":
-        st.session_state['data'] = load_default_data()
-    elif data_option == "Data Upload":
-        try:
-            st.session_state['data'] = pd.read_csv("Save_Data.csv")
-        except FileNotFoundError:
-            st.error("Belum ada data yang di upload. Silahkan upload pada menu Beranda.")
+        # Memuat dataset sesuai pilihan pengguna
+        if data_option == "Data Default":
+            st.session_state['data'] = load_default_data()
+        elif data_option == "Data Upload":
+            try:
+                st.session_state['data'] = pd.read_csv("Save_Data.csv")
+            except FileNotFoundError:
+                st.error("Belum ada data yang di upload. Silahkan upload pada menu Beranda.")
     
-    with st.sidebar:
         if os.path.exists('Save_Data.csv'):
             st.info("Sebelum keluar dari website, silahkan hapus data pribadi terlebih dahulu.")
 
             if st.button("Hapus Data Pribadi"):
-
                 os.remove('Save_Data.csv')
-                st.success("Data pribadi telah dihapus. Silahkan refresh ulang website.")
+                st.success("Data pribadi telah dihapus.")
+                st.rerun()
         else:
             authenticator.logout('Logout', 'sidebar')
             
@@ -101,8 +99,6 @@ def main():
         <p>© 2025 SiPRELIS. All rights reserved.</p>
         </div>"""
         st.markdown(footer_html, unsafe_allow_html=True)
-
-
 
     # Beranda
     if selected == "Beranda":
@@ -141,9 +137,13 @@ def main():
             # Tombol untuk menyimpan data
             if st.button("Simpan Data"):
                 save_data(st.session_state['data'])
-        
-        
-                
+                st.rerun()
+            
+            if os.path.exists('Save_Data.csv'):
+                st.success(f"Data berhasil diupload. Silahkan pilih data upload pada sidebar.")
+
+
+                      
         st.subheader("Lokasi Data Default📍")
         
         # Koordinat Nusa Penida
@@ -167,7 +167,7 @@ def main():
 
 
     # Analysis Page
-    elif selected == "Analysis":
+    elif selected == "Analisis":
         if st.session_state['data'] is None:
             st.error("Tidak ada data yang tersedia untuk dianalisis. Silakan kembali ke halaman Beranda dan upload data atau gunakan data default.")
         else:
@@ -298,6 +298,44 @@ def main():
 
         # Visualisasi prediksi dengan batas kapasitas listrik
         plot_forecast_with_capacity(forecast, total_capacity)
+    
+    #faq
+    elif selected=="FAQ":
+        st.title("FAQ - Frequently Asked Questions")
+
+        st.subheader("1. Apa itu website SiPRELIS?")
+        st.write("""
+            <strong>SiPRELIS</strong> adalah website yang dikembangkan untuk menyediakan <strong>sistem prediksi penggunaan listrik</strong> berbasis data. Website ini bertujuan untuk membantu pengguna dalam memprediksi penggunaan listrik mereka dalam <strong>kilowatt (kW)</strong>, sehingga dapat merencanakan konsumsi energi secara lebih efisien. 
+            Dengan menggunakan data historis, <strong>SiPRELIS</strong> memberikan estimasi penggunaan listrik di masa depan, membantu mengoptimalkan biaya dan penggunaan energi.
+        """, unsafe_allow_html=True)
+
+        st.subheader("2. Apakah SiPRELIS aman?")
+        st.write("""
+            <strong>SiPRELIS</strong> sangat aman digunakan. Namun, kami sangat menyarankan agar Anda selalu <strong>LOGOUT</strong> setelah menggunakan website ini.
+            Dengan logout, Anda dapat memastikan bahwa akun Anda tetap aman dan tidak ada informasi pribadi yang terakses oleh orang lain.
+        """, unsafe_allow_html=True)
+
+        st.subheader("3. Bagaimana urutan cara menggunakan SiPRELIS?")
+        st.write("""
+            Berikut adalah langkah-langkah untuk menggunakan <strong>SiPRELIS</strong> secara efektif:
+            1. Mulailah dari menu <strong>Beranda</strong>, yang memberikan pengantar dan dapat mengunggah file pribadi anda.
+            2. Lanjutkan ke menu <strong>Analisis</strong>, di mana Anda dapat menganalisis pola penggunaan energi listrik Anda.
+            3. Terakhir, lihat hasil prediksi di menu <strong>Prediksi</strong>, yang akan memberikan perkiraan penggunaan listrik untuk periode mendatang. Ini sangat membantu dalam merencanakan penghematan energi atau biaya listrik.
+        """, unsafe_allow_html=True)
+
+        st.subheader("4. Apakah algoritma yang dipakai SiPRELIS dalam memprediksi nilai?")
+        st.write("""
+            <strong>SiPRELIS</strong> menggunakan <strong>algoritma Prophet</strong>, yang merupakan salah satu algoritma prediksi terbaik untuk data time series. Prophet sangat efisien dalam mengelola data yang memiliki musim atau pola yang berubah-ubah sepanjang waktu. 
+            Algoritma ini dikembangkan oleh <strong>Facebook</strong> untuk menangani data dengan banyak variasi dan outlier. Prophet tidak hanya memprediksi tren masa depan tetapi juga mampu menangkap pola musiman, seperti fluktuasi musiman dalam penggunaan listrik, dengan sangat akurat.
+            Oleh karena itu, <strong>SiPRELIS</strong> dapat memberikan hasil prediksi yang lebih baik, meskipun data yang digunakan tidak selalu sempurna atau terstruktur dengan sangat baik.
+        """, unsafe_allow_html=True)
+
+        st.subheader("5. Bagaimana jika saya mengalami kendala saat menggunakan website SiPRELIS?")
+        st.write("""
+            Jika Anda mengalami kendala teknis atau memiliki pertanyaan terkait penggunaan <strong>SiPRELIS</strong>, kami siap membantu! Anda dapat mengirimkan pertanyaan atau laporan masalah melalui email ke <strong>henptra@gmail.com</strong>. 
+            Tim dukungan kami akan segera merespons dan memberikan solusi yang diperlukan untuk memastikan Anda dapat menggunakan website ini dengan lancar. 
+            Jangan ragu untuk menghubungi kami jika Anda membutuhkan bantuan atau memiliki saran untuk meningkatkan <strong>SiPRELIS</strong>.
+        """, unsafe_allow_html=True)
     
             
 authenticator.login()

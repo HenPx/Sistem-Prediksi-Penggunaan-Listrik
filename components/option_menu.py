@@ -31,8 +31,8 @@ def create_option_menu():
 
     selected = option_menu(
         menu_title="Menu",
-        options=["Beranda", "Analysis", "Prediksi"],
-        icons=["house", "graph-up", "clipboard2-data"],
+        options=["Beranda", "Analisis", "Prediksi", "FAQ"],
+        icons=["house", "graph-up", "clipboard2-data", "question-circle"],
         menu_icon="cast",
         default_index=0,
         orientation="vertical",
