@@ -7,7 +7,7 @@ def create_option_menu():
         """
         <style>
             [data-testid=stSidebar] {
-                background-color: #179AB1;  /* Warna latar belakang sidebar */
+                background-color: #D6E4FF;  /* Warna latar belakang sidebar */
                 padding: 10px;  /* Tambahkan padding jika diperlukan */
                 
             }
@@ -26,8 +26,8 @@ def create_option_menu():
     with st.sidebar:
         st.image("images/logo_App.png")
  
-    # Tambahkan tulisan "PLN" di samping lo go
-    st.sidebar.markdown("<p style='font-size: 25px; text-align: center; font-weight: bold; color: #ffffff;'>SiPEL</p>", unsafe_allow_html=True)
+    # Tambahkan tulisan di samping logo
+    st.sidebar.markdown("<p style='font-size: 25px; text-align: center; font-weight: bold; color: #000000;'>SiPRELIS</p>", unsafe_allow_html=True)
 
     selected = option_menu(
         menu_title="Menu",

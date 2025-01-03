@@ -1,18 +1,16 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objs as go
-
 from utils.prophet_model import prepare_prophet_data, predict_future
-from utils.visualizer import visualize_data, visualize_forecast
+from utils.visualizer import visualize_forecast, plot_forecast_with_capacity, plot_stacked_chart, plot_data_per_year
 from components.option_menu import create_option_menu
 import plotly.express as px
 import folium
 from streamlit_folium import st_folium
 import streamlit_authenticator as stauth
 import streamlit as st
-
 import yaml
 from yaml.loader import SafeLoader
+import os
 
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
@@ -27,41 +25,6 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-
-def create_toc(sections):
-    """
-    Membuat daftar isi dinamis berdasarkan heading yang diberikan.
-    """
-    st.markdown("## Daftar Isi")
-    for section in sections:
-        st.markdown(f"- [{section}](#{section.lower().replace(' ', '-')})")
-
-def plot_stacked_chart(data):
-    # Resampling data
-    weekly_data = data['BP'].resample('W').mean()
-    monthly_data = data['BP'].resample('ME').mean()
-    yearly_data = data['BP'].resample('YE').mean()
-
-    # Membuat figure baru
-    fig = go.Figure()
-
-    # Menambahkan trace untuk rata-rata mingguan
-    fig.add_trace(go.Scatter(x=weekly_data.index, y=weekly_data, mode='lines', name='Rata-rata Mingguan'))
-
-    # Menambahkan trace untuk rata-rata bulanan
-    fig.add_trace(go.Scatter(x=monthly_data.index, y=monthly_data, mode='lines', name='Rata-rata Bulanan'))
-
-    # Menambahkan trace untuk rata-rata tahunan
-    fig.add_trace(go.Scatter(x=yearly_data.index, y=yearly_data, mode='lines', name='Rata-rata Tahunan'))
-
-    # Menyusun layout
-    fig.update_layout(title='Perbandingan Rata-rata Beban Puncak (Mingguan, Bulanan, Tahunan)',
-                      xaxis_title='Tanggal',
-                      yaxis_title='Beban Puncak',
-                      showlegend=True)
-
-    # Menampilkan chart
-    st.plotly_chart(fig, use_container_width=True)
     
 # Fungsi untuk memuat data default
 def load_default_data():
@@ -74,11 +37,11 @@ def load_default_data():
 # Fungsi untuk menyimpan data ke file CSV
 def save_data(data, filename="Save_Data.csv"):
     data.to_csv(filename, index=False)
-    st.success(f"Data berhasil diupload.")
+    st.success(f"Data berhasil diupload. Silahkan refresh website dan pilih data yang digunakan pada sidebar.")
 # Judul utama aplikasi
 st.markdown(
     """
-    <h1 style="text-align: center; color: #fffff; font-size:35px;">SiPEL | Sistem Prediksi Penggunaan Listrik</h1>
+    <h1 style="text-align: center; color: #fffff; font-size:30px;">SiPRELIS | Sistem Prediksi Penggunaan Listrik</h1>
 
     
     """, 
@@ -121,30 +84,49 @@ def main():
         try:
             st.session_state['data'] = pd.read_csv("Save_Data.csv")
         except FileNotFoundError:
-            st.error("Belum ada data yang di upload.")
+            st.error("Belum ada data yang di upload. Silahkan upload pada menu Beranda.")
+    
+    with st.sidebar:
+        if os.path.exists('Save_Data.csv'):
+            st.info("Sebelum keluar dari website, silahkan hapus data pribadi terlebih dahulu.")
+
+            if st.button("Hapus Data Pribadi"):
+
+                os.remove('Save_Data.csv')
+                st.success("Data pribadi telah dihapus. Silahkan refresh ulang website.")
+        else:
+            authenticator.logout('Logout', 'sidebar')
+            
+        footer_html = """<div style='text-align: center;'>
+        <p>© 2025 SiPRELIS. All rights reserved.</p>
+        </div>"""
+        st.markdown(footer_html, unsafe_allow_html=True)
 
 
-    # Landing Page
+
+    # Beranda
     if selected == "Beranda":
         st.header("Selamat Datang! 👋🏻")
-        st.write("Aplikasi ini dirancang untuk membantu Anda menganalisis data beban puncak dan memprediksi tren yang akan datang. Dengan wawasan yang tepat, Anda dapat mengambil keputusan yang lebih baik dalam pengelolaan sumber daya listrik.")
+        st.write("Aplikasi ini dirancang untuk membantu Anda menganalisis data beban penggunaan listrik dan memprediksi tren yang akan datang. Dengan wawasan yang tepat, Anda dapat mengambil keputusan yang lebih baik dalam pengelolaan sumber daya listrik.")
         st.write("Kami berharap aplikasi ini akan memberikan informasi yang berguna dan mendukung Anda dalam merencanakan kebutuhan energi yang lebih efisien. Selamat menggunakan aplikasi ini!")
         st.subheader("Data yang digunakan per hari ini di Nusa Penida:  📊")
 
         # Tampilkan data default atau yang telah diunggah pengguna
         if st.session_state['data'] is not None:
-            st.write("Saat ini, kami menampilkan data yang dihasilkan dari input Anda. Jika Anda ingin mengeksplorasi data lainnya, jangan ragu untuk mengunggah file baru di bawah ini.")
-            st.dataframe(st.session_state['data'].head())
+            st.write("Saat ini, kami menampilkan data yang anda gunakan pada sidebar. Jika Anda ingin mengeksplorasi data lainnya, jangan ragu untuk mengunggah (upload) file di bawah ini.")
+            st.dataframe(st.session_state['data'])
         else:
             st.error("Tidak ada data yang tersedia.")
 
         # Unggah file untuk mengganti data
+        st.header("Anda ingin menggunakan data pribadi?")
         st.subheader("Cek ketentuan datanya dulu, yuk! 📋")
         st.markdown(
             """
             <ul>
                 <li><strong>Kolom 1:</strong> Tanggal dengan format <em>dd-mm-yyyy</em>, pastikan untuk mengikuti format ini agar data dapat diproses dengan benar.</li>
-                <li><strong>Kolom 2:</strong> Beban Puncak (BP) merupakan total penggunaan listrik per-harinya. Ditulis dengan format numerik/angka, harap masukkan angka tanpa simbol atau karakter lain.</li>
+                <li><strong>Kolom 2:</strong> Beban Puncak (BP) merupakan total penggunaan listrik terbesar per-harinya dalam kilo watt (kW). Ditulis dengan format numerik/angka, harap masukkan angka tanpa simbol atau karakter lain.</li>
+                <li><strong>Penting:</strong> Semakin banyak data historis, semakin baik prediksi kedepannya. Untuk menghasilkan prediksi yang maksimal, minimal memiliki data 2 tahun.</li>
             </ul>
             """,
             unsafe_allow_html=True
@@ -154,13 +136,15 @@ def main():
             # Load data dari file yang diunggah
             st.session_state['data'] = pd.read_csv(uploaded_file)
             st.write("Berikut adalah data yang Anda upload:")
-            st.dataframe(st.session_state['data'].head())
+            st.dataframe(st.session_state['data'])
 
-        # Tombol untuk menyimpan data
-        if st.button("Simpan Data"):
-            save_data(st.session_state['data'])
-            
-        st.subheader("Lokasi Data 📍")
+            # Tombol untuk menyimpan data
+            if st.button("Simpan Data"):
+                save_data(st.session_state['data'])
+        
+        
+                
+        st.subheader("Lokasi Data Default📍")
         
         # Koordinat Nusa Penida
         nusa_penida_coords = [-8.675239286389026, 115.55320582997335]
@@ -174,7 +158,7 @@ def main():
         # Tambahkan marker dengan link ke Google Maps di popup
         folium.Marker(
             nusa_penida_coords,
-            popup=f'<a href="{google_maps_link}" target="_blank">SiPEL</a>',
+            popup=f'<a href="{google_maps_link}" target="_blank">SiPRELIS</a>',
             icon=folium.Icon(color="red")
         ).add_to(map_nusa_penida)
 
@@ -185,12 +169,11 @@ def main():
     # Analysis Page
     elif selected == "Analysis":
         if st.session_state['data'] is None:
-            st.error("Tidak ada data yang tersedia untuk dianalisis. Silakan kembali ke halaman Landing Page dan upload data atau gunakan data default.")
+            st.error("Tidak ada data yang tersedia untuk dianalisis. Silakan kembali ke halaman Beranda dan upload data atau gunakan data default.")
         else:
-            st.header("Analisis Data Beban Puncak 📈")
-            st.write("Analisis beban puncak dapat membantu Anda memahami pola penggunaan energi secara mendalam. Dengan mengumpulkan dan menganalisis data seperti waktu penggunaan dan faktor-faktor lainnya, kami dapat mengidentifikasi tren yang memengaruhi beban puncak. Melalui visualisasi data yang mudah dipahami, Anda dapat melihat fluktuasi penggunaan energi dan memprediksi beban di masa depan. Layanan ini dirancang untuk mendukung keputusan yang lebih baik dalam manajemen energi, perencanaan kapasitas, dan strategi optimalisasi penggunaan energi.")
-            sections = ["Daftar Isi", "Data Wrangling", "Exploratory Data Analysis", "Rata-Rata Beban"]
-            create_toc(sections)
+            st.header("Analisis Data  📈")
+            st.write("Analisis data dapat membantu Anda memahami pola penggunaan energi secara mendalam. Melalui visualisasi data yang mudah dipahami, Anda dapat melihat fluktuasi penggunaan energi. Layanan ini dirancang untuk mendukung keputusan yang lebih baik dalam manajemen energi, perencanaan kapasitas, dan strategi optimalisasi penggunaan energi.")
+            
             # Mengonversi kolom 'Date' menjadi datetime dan mengatur sebagai index
             try:
                 st.session_state['data']['Date'] = pd.to_datetime(st.session_state['data']['Date'], dayfirst=True, errors='coerce')
@@ -199,12 +182,13 @@ def main():
                 st.error("Kolom 'Date' tidak ditemukan di dataset.")
 
             # Data Wrangling Section
-            st.markdown("## Data Wrangling ⌛")
-            st.subheader("Display Data")
-            st.write("Berikut adalah data yang Anda gunakan. Untuk mengubah data, silakan pergi ke menu Landing Page.")
-            st.dataframe(st.session_state['data'].head())
+            st.markdown("## Cek Data ⌛")
+            st.subheader("Data yang Digunakan")
+            st.write("Berikut adalah data yang Anda gunakan. Untuk mengubah data, silakan pergi ke menu Beranda.")
+            
+            st.dataframe(st.session_state['data'])
 
-            st.subheader("Assessing Data")
+            st.subheader("Penilaian Kualitas Data")
 
             st.write("Proses menilai kualitas data meliputi pencarian nilai yang hilang dan data duplikat.")
             missing_values = st.session_state['data'].isnull().sum()
@@ -219,9 +203,8 @@ def main():
             duplicate_data = drop_colum.duplicated().sum()
             st.write(f"Jumlah nilai yang hilang per kolom:\n{missing_values}")
             st.write(f"Jumlah data duplikat: {duplicate_data}")
-            
 
-            st.subheader("Cleaning Data")
+            st.subheader("Pembersihan Data")
             st.write("Proses membersihkan data dengan memperbaiki atau menghapus data yang tidak konsisten, hilang, atau duplikat untuk meningkatkan kualitas dan akurasi dataset.")
             if missing_values.any() or duplicate_data > 0:
                     st.session_state['data'] = st.session_state['data'].drop_duplicates()
@@ -229,27 +212,6 @@ def main():
                     st.write("Data berhasil dibersihkan.")
             else:
                 st.write("Data sudah bersih.")
-
-            # Fungsi untuk menumpukkan data berdasarkan tahun
-            def plot_data_per_year(data):
-                st.write("_Silahkan klik tanggal pada bagian keterangan untuk menyeleksi analisis data dari tahun-tahun tertentu sesuai dengan yang Anda inginkan._")
-                data['Year'] = data.index.year
-                years = data['Year'].unique()
-                
-                fig = go.Figure()
-                
-                for year in years:
-                    yearly_data = data[data['Year'] == year]['BP'].resample('D').mean()
-                    fig.add_trace(go.Scatter(x=yearly_data.index.dayofyear, 
-                                            y=yearly_data, 
-                                            mode='lines', 
-                                            name=str(year)))
-                
-                fig.update_layout(title='Data Beban Puncak per Tahun',
-                                xaxis_title='Hari ke-',
-                                yaxis_title='Beban Puncak',
-                                showlegend=True)
-                return fig
 
             # Fungsi untuk memvisualisasikan semua data dalam satu grafik
             def plot_all_data(data):
@@ -259,7 +221,7 @@ def main():
                 return fig
 
             # Menampilkan visualisasi berdasarkan pilihan
-            st.markdown("## Exploratory Data Analysis 📊")
+            st.markdown("## Eksplor dan Cermati Data Anda! 📊")
             st.write("Pada bagian ini, Anda dapat memilih untuk menampilkan grafik data beban puncak per tahun atau semua data sekaligus.")
 
            # Menambahkan opsi pilihan visualisasi sebagai dropdown
@@ -298,14 +260,14 @@ def main():
     # Prediksi Page
     elif selected == "Prediksi":
         st.header("Cek prediksi di sini, yuk! 📈")
-        st.write("Prediksi beban puncak membantu mengidentifikasi pola penggunaan energi di masa depan. Dengan memanfaatkan data historis seperti waktu penggunaan dan faktor-faktor yang memengaruhi konsumsi energi, prediksi ini memberikan wawasan mengenai fluktuasi dan tren penggunaan energi. Melalui pendekatan ini, Anda dapat membuat keputusan yang lebih baik dalam manajemen energi, perencanaan kapasitas, dan strategi optimalisasi, sehingga meningkatkan efisiensi penggunaan energi dan mengurangi risiko kelebihan beban pada sistem.")
-        st.subheader("Note:")
+        st.write("Prediksi penggunaan listrik membantu mengidentifikasi pola penggunaan energi di masa depan. Dengan memanfaatkan data historis, prediksi ini memberikan wawasan mengenai fluktuasi dan tren penggunaan energi. Melalui pendekatan ini, Anda dapat membuat keputusan yang lebih baik dalam manajemen energi, perencanaan kapasitas, dan strategi optimalisasi, sehingga meningkatkan efisiensi penggunaan energi dan mengurangi risiko kelebihan penggunaan energi listrik.")
+        st.subheader("Catatan:")
         st.markdown(
             """
             <ul>
                 <li> Anda dapat menggeser garis di bawah untuk menentukan jangka waktu prediksi yang Anda inginkan. </li>
                 <li> Prediksi dibuat dengan menggunakan algoritma Prophet. </li>
-                <li> Terdapat 2 jenis prediksi, yaitu <em>historical</em> dan <em>future</em>. </li>
+                <li> Terdapat 2 jenis prediksi, yaitu <em>historical</em> (digunakan untuk melihat rerata penggunaan listrik berdasarkan data) dan <em>future</em> (hasil prediksi dari data historis). </li>
             </ul>
             """,
             unsafe_allow_html=True
@@ -328,79 +290,25 @@ def main():
 
         # Input batas kapasitas maksimal listrik
         total_capacity = st.number_input(
-            'Masukkan batas kapasitas maksimal listrik (dalam MW):',
+            'Masukkan batas kapasitas maksimal listrik (dalam kW):',
             min_value=0.0, 
             step=100.0,
             value=10000.0
         )
-        
-        def plot_forecast_with_capacity(forecast, total_capacity):
-            fig = go.Figure()
 
-            # Pisahkan data prediksi yang melebihi kapasitas dan yang tidak
-            below_capacity = forecast['yhat'].where(forecast['yhat'] <= total_capacity, total_capacity)
-            above_capacity = forecast['yhat'].where(forecast['yhat'] > total_capacity)
-
-            # Plot prediksi beban puncak yang di bawah atau sama dengan kapasitas (warna biru)
-            fig.add_trace(go.Scatter(
-                x=forecast['ds'], 
-                y=below_capacity,
-                mode='lines', 
-                name='Prediksi Beban Puncak (Di Bawah Kapasitas)',
-                line=dict(color='blue')
-            ))
-
-            # Plot prediksi beban puncak yang melebihi kapasitas (warna merah)
-            fig.add_trace(go.Scatter(
-                x=forecast['ds'], 
-                y=above_capacity,
-                mode='lines', 
-                name='Prediksi Beban Puncak (Melebihi Kapasitas)',
-                line=dict(color='red')
-            ))
-
-            # Plot garis batas kapasitas listrik (garis putus-putus merah)
-            fig.add_trace(go.Scatter(
-                x=forecast['ds'],
-                y=[total_capacity] * len(forecast),
-                mode='lines',
-                name='Kapasitas Maksimum Listrik',
-                line=dict(color='red', dash='dash')
-            ))
-
-            # Menyusun layout
-            fig.update_layout(title='Prediksi Beban Puncak vs Kapasitas Listrik',
-                            xaxis_title='Tanggal',
-                            yaxis_title='Beban Puncak (MW)',
-                            showlegend=True)
-
-            # Tampilkan plot
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Filter prediksi yang melebihi kapasitas
-            exceeding_capacity = forecast[forecast['yhat'] > total_capacity]
-
-            # Tampilkan data yang melebihi kapasitas jika ada
-            if not exceeding_capacity.empty:
-                st.subheader("Prediksi yang Melebihi Kapasitas Listrik")
-                st.write("Prediksi yang melebihi kapasitas listrik membantu mengidentifikasi potensi risiko kelebihan beban pada sistem energi. Dengan menganalisis data historis dan pola penggunaan, kita dapat memperkirakan momen-momen ketika konsumsi listrik diperkirakan akan melampaui batas kapasitas yang aman.")
-                st.dataframe(exceeding_capacity[['ds', 'yhat']])
-            else:
-                st.write("Tidak ada prediksi yang melebihi kapasitas listrik.")
-
-        
         # Visualisasi prediksi dengan batas kapasitas listrik
         plot_forecast_with_capacity(forecast, total_capacity)
     
             
 authenticator.login()
-
     
 if st.session_state['authentication_status']:
     main()
-    authenticator.logout('Logout', 'sidebar')
+    
     with open('config.yaml', 'w') as file:
         yaml.dump(config, file, default_flow_style=False)
+         # Hapus file save_data.csv jika ada
+    
 elif st.session_state['authentication_status'] is False:
     st.error('Username/password is incorrect')
 elif st.session_state['authentication_status'] is None:

@@ -1,17 +1,5 @@
 import plotly.graph_objs as go
-import plotly.express as px
 import streamlit as st
-import matplotlib.pyplot as plt
-
-
-def visualize_data(data):
-    st.subheader('Dataset')
-    st.write(data.head())
-
-    st.subheader('Grafik Dataset')
-    fig = px.line(data, x=data.index, y='BP', title='Grafik BP dari Dataset')
-    st.plotly_chart(fig)
-
 
 # Visualize forecast using Plotly
 def visualize_forecast(model, forecast, df_prophet, periods):
@@ -148,7 +136,7 @@ def visualize_forecast(model, forecast, df_prophet, periods):
 
     # Update layout
     fig.update_layout(
-        title='BP Forecasting using Prophet',
+        title='Prediksi Penggunaan Listrik dengan Algoritma Prophet',
         xaxis_title='Date',
         yaxis_title='BP',
         legend_title='Legend',
@@ -162,7 +150,7 @@ def visualize_forecast(model, forecast, df_prophet, periods):
     st.write(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(periods))
     
     # Komponen Prediksi dengan Plotly
-    st.subheader('Komponen Prediksi dengan Plotly')
+    st.subheader('Komponen Prediksi')
 
     # Plot komponen tren dengan upper dan lower bound
     fig_trend = go.Figure()
@@ -187,7 +175,7 @@ def visualize_forecast(model, forecast, df_prophet, periods):
         fill='tonexty', fillcolor='rgba(173, 216, 230, 0.3)'  # Mengisi area antara upper dan lower bound
     ))
 
-    fig_trend.update_layout(title='Komponen Tren dengan Upper & Lower Bound', 
+    fig_trend.update_layout(title='Komponen Tren dengan Upper & Lower Bound (batas atas dan batas bawah)', 
                             xaxis_title='Tanggal', 
                             yaxis_title='Nilai Tren',
                             xaxis=dict(showgrid=True, gridcolor='LightGray', gridwidth=0.5),  # Menambahkan grid di sumbu X
@@ -216,7 +204,7 @@ def visualize_forecast(model, forecast, df_prophet, periods):
                 fill='tonexty', fillcolor='rgba(255, 165, 0, 0.3)'  # Mengisi area antara upper dan lower bound
             ))
 
-        fig_weekly.update_layout(title='Komponen Musiman Mingguan dengan Upper & Lower Bound', 
+        fig_weekly.update_layout(title='Komponen Musiman Mingguan dengan Upper & Lower Bound (batas atas dan batas bawah)', 
                                 xaxis_title='Tanggal', 
                                 yaxis_title='Nilai Musiman Mingguan')
         st.plotly_chart(fig_weekly, use_container_width=True)
@@ -230,8 +218,109 @@ def visualize_forecast(model, forecast, df_prophet, periods):
         ))
 
 
-        fig_yearly.update_layout(title='Komponen Musiman Tahunan dengan Upper & Lower Bound', 
+        fig_yearly.update_layout(title='Komponen Musiman Tahunan dengan Upper & Lower Bound (batas atas dan batas bawah)', 
                                 xaxis_title='Tanggal', 
                                 yaxis_title='Nilai Musiman Tahunan')
         st.plotly_chart(fig_yearly, use_container_width=True)
 
+def plot_forecast_with_capacity(forecast, total_capacity):
+            fig = go.Figure()
+
+            # Pisahkan data prediksi yang melebihi kapasitas dan yang tidak
+            below_capacity = forecast['yhat'].where(forecast['yhat'] <= total_capacity, total_capacity)
+            above_capacity = forecast['yhat'].where(forecast['yhat'] > total_capacity)
+
+            # Plot prediksi beban puncak yang di bawah atau sama dengan kapasitas (warna biru)
+            fig.add_trace(go.Scatter(
+                x=forecast['ds'], 
+                y=below_capacity,
+                mode='lines', 
+                name='Prediksi Beban Puncak (Di Bawah Kapasitas)',
+                line=dict(color='blue')
+            ))
+
+            # Plot prediksi beban puncak yang melebihi kapasitas (warna merah)
+            fig.add_trace(go.Scatter(
+                x=forecast['ds'], 
+                y=above_capacity,
+                mode='lines', 
+                name='Prediksi Beban Puncak (Melebihi Kapasitas)',
+                line=dict(color='red')
+            ))
+
+            # Plot garis batas kapasitas listrik (garis putus-putus merah)
+            fig.add_trace(go.Scatter(
+                x=forecast['ds'],
+                y=[total_capacity] * len(forecast),
+                mode='lines',
+                name='Kapasitas Maksimum Listrik',
+                line=dict(color='red', dash='dash')
+            ))
+
+            # Menyusun layout
+            fig.update_layout(title='Prediksi Beban Puncak vs Kapasitas Listrik',
+                            xaxis_title='Tanggal',
+                            yaxis_title='Beban Puncak (kW)',
+                            showlegend=True)
+
+            # Tampilkan plot
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Filter prediksi yang melebihi kapasitas
+            exceeding_capacity = forecast[forecast['yhat'] > total_capacity]
+
+            # Tampilkan data yang melebihi kapasitas jika ada
+            if not exceeding_capacity.empty:
+                st.subheader("Prediksi yang Melebihi Kapasitas Listrik")
+                st.write("Prediksi yang melebihi kapasitas listrik membantu mengidentifikasi potensi risiko kelebihan beban pada sistem energi. Dengan menganalisis data historis dan pola penggunaan, kita dapat memperkirakan momen-momen ketika konsumsi listrik diperkirakan akan melampaui batas kapasitas yang aman.")
+                st.dataframe(exceeding_capacity[['ds', 'yhat']])
+            else:
+                st.write("Tidak ada prediksi yang melebihi kapasitas listrik.")
+
+def plot_stacked_chart(data):
+    # Resampling data
+    weekly_data = data['BP'].resample('W').mean()
+    monthly_data = data['BP'].resample('ME').mean()
+    yearly_data = data['BP'].resample('YE').mean()
+
+    # Membuat figure baru
+    fig = go.Figure()
+
+    # Menambahkan trace untuk rata-rata mingguan
+    fig.add_trace(go.Scatter(x=weekly_data.index, y=weekly_data, mode='lines', name='Rata-rata Mingguan'))
+
+    # Menambahkan trace untuk rata-rata bulanan
+    fig.add_trace(go.Scatter(x=monthly_data.index, y=monthly_data, mode='lines', name='Rata-rata Bulanan'))
+
+    # Menambahkan trace untuk rata-rata tahunan
+    fig.add_trace(go.Scatter(x=yearly_data.index, y=yearly_data, mode='lines', name='Rata-rata Tahunan'))
+
+    # Menyusun layout
+    fig.update_layout(title='Perbandingan Rata-rata Beban Puncak (Mingguan, Bulanan, Tahunan)',
+                      xaxis_title='Tanggal',
+                      yaxis_title='Beban Puncak',
+                      showlegend=True)
+
+    # Menampilkan chart
+    st.plotly_chart(fig, use_container_width=True)
+    
+# Fungsi untuk menumpukkan data berdasarkan tahun
+def plot_data_per_year(data):
+    st.write("_Silahkan klik tanggal pada bagian keterangan untuk menyeleksi analisis data dari tahun-tahun tertentu sesuai dengan yang Anda inginkan._")
+    data['Year'] = data.index.year
+    years = data['Year'].unique()
+    
+    fig = go.Figure()
+    
+    for year in years:
+        yearly_data = data[data['Year'] == year]['BP'].resample('D').mean()
+        fig.add_trace(go.Scatter(x=yearly_data.index.dayofyear, 
+                                y=yearly_data, 
+                                mode='lines', 
+                                name=str(year)))
+    
+    fig.update_layout(title='Data Beban Puncak per Tahun',
+                    xaxis_title='Hari ke-',
+                    yaxis_title='Beban Puncak',
+                    showlegend=True)
+    return fig
