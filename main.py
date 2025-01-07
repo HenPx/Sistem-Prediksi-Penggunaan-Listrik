@@ -86,7 +86,7 @@ def main():
                 st.error("Belum ada data yang di upload. Silahkan upload pada menu Beranda.")
     
         if os.path.exists('Save_Data.csv'):
-            st.warning("Sebelum keluar dari website, silahkan hapus data pribadi terlebih dahulu.")
+            st.info("Sebelum keluar dari website, silahkan hapus data pribadi terlebih dahulu.")
 
             if st.button("Hapus Data Pribadi"):
                 os.remove('Save_Data.csv')
