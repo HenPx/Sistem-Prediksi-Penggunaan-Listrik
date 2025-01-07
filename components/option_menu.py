@@ -7,7 +7,7 @@ def create_option_menu():
         """
         <style>
             [data-testid=stSidebar] {
-                background-color: #D6E4FF;  /* Warna latar belakang sidebar */
+                background-color: #b5c2d0;  /* Warna latar belakang sidebar */
                 padding: 10px;  /* Tambahkan padding jika diperlukan */
                 
             }
