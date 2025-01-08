@@ -29,9 +29,9 @@ authenticator = stauth.Authenticate(
 # Fungsi untuk memuat data default
 def load_default_data():
     try:
-        return pd.read_csv('BP_2024.csv')
+        return pd.read_csv('default_data.csv')
     except FileNotFoundError:
-        st.error("Data default 'BP_2024.csv' tidak ditemukan.")
+        st.error("Data default 'default_data.csv' tidak ditemukan.")
         return None
 
 # Fungsi untuk menyimpan data ke file CSV
@@ -342,11 +342,8 @@ authenticator.login()
     
 if st.session_state['authentication_status']:
     main()
-    
     with open('config.yaml', 'w') as file:
         yaml.dump(config, file, default_flow_style=False)
-         # Hapus file save_data.csv jika ada
-    
 elif st.session_state['authentication_status'] is False:
     st.error('Username/password is incorrect')
 elif st.session_state['authentication_status'] is None:
